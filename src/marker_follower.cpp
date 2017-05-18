@@ -5,7 +5,9 @@
 #include "aruco_detection/ArMarkers.h" 
 #include <sstream> 
 #include <math.h>
-#include <time.h> 
+#include <time.h>
+#include <string>
+
 
 using namespace std; 
 
@@ -24,38 +26,56 @@ float motorOnePower=0.0; //input variables of the system
 float previusAngle=0.0;
 float integralAngle=0.0;
 
+int startTime=0;
+
 float estimatedMotorZeroPower = 0;
 float estimatedMotorOnePower = 0;
   
-const float DISTANCETARGET=0.3; //target distance in cm
+float distanceTarget=0.3; //target distance in cm
 const float ANGLETARGET=0; //target angle in cm. NOTE: since the target is 0.0, angle itself is the angle error signal 
 const float DISTANCEPIDPROPORTIONALCONSTANT=1000;
-const float ANGLEPIDPROPORTIONALCONSTANT=20;
+const float ANGLEPIDPROPORTIONALCONSTANTLITTLEANGLES=20;
+const float ANGLEPIDPROPORTIONALCONSTANTGREATANGLES=40;
 const float ANGLEPIDDERIVATIVECONSTANT=30;
 const float ANGLEPIDINTEGRALCONSTANT=10;
-const float FILTERCONSTANT = 0.4;
+const float FILTERCONSTANT = 0.5;
 
-void markerCallback(aruco_detection::ArMarkers msg) {   
+void markerCallback(aruco_detection::ArMarkers msg) {
+	if(startTime==0){
+		struct timeval tp;
+		gettimeofday(&tp, NULL);
+		startTime = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+	}
+	
 	markerNo=msg.markerNo;   
 	r=msg.rVecs;   
 	t=msg.tVecs;   
 	ids=msg.markersIds;   
 	  
-	std_msgs::Int16MultiArray motorSpeed; 
+	std_msgs::Int16MultiArray motorSpeed;
 	   
 	if(markerNo > 0) {
-		
 		d = t.at(2); // z coord
-		angle = atan((t.at(0)+0.02)/t.at(2)); //fix upper left corner ref
+		angle = atan((t.at(0))/t.at(2)); //fix upper left corner ref
 		
+		printf("%f",angle);
+		
+				
+		/*//utile per fare i grafici di come reagisce, dopo togliere
+		struct timeval tp;
+		gettimeofday(&tp, NULL);
+		long int currentTime = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+		printf("%f \t %f \t %i \n", d, angle, currentTime-startTime);*/
+		
+					
 		//integralAngle += angle; //perform integral
 		
 		
 		//FIRST PID FEEDBACK, DISTANCE CONTROL
 		
 		//PROPORTIONAL
-		motorZeroPower=DISTANCEPIDPROPORTIONALCONSTANT*(d-DISTANCETARGET);
-		motorOnePower=DISTANCEPIDPROPORTIONALCONSTANT*(d-DISTANCETARGET);
+		motorZeroPower=DISTANCEPIDPROPORTIONALCONSTANT*(d-distanceTarget);
+		motorOnePower=DISTANCEPIDPROPORTIONALCONSTANT*(d-distanceTarget);
 		
 		
 		if(motorZeroPower>255)
@@ -71,8 +91,14 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 		//SECOND PID FEEDBACK, ANGLE CONTROL
 
 		//PROPORTIONAL
-		motorOnePower+=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANT;
-		motorZeroPower-=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANT;
+		if((angle-ANGLETARGET)>0.15||(angle-ANGLETARGET)<-0.15){
+			motorOnePower+=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTGREATANGLES;
+			motorZeroPower-=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTGREATANGLES;
+		}		
+		else{
+			motorOnePower+=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTLITTLEANGLES;
+			motorZeroPower-=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTLITTLEANGLES;
+		}
 		
 		//DERIVATIVE
 		motorOnePower+=(angle-previusAngle)*ANGLEPIDDERIVATIVECONSTANT;
@@ -85,7 +111,7 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 
 		previusAngle=angle;
 		
-	}	
+	}
 	else{  
 		if(previusAngle>0){
 			motorOnePower=70;
@@ -94,8 +120,6 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 			motorOnePower=0;
 			motorZeroPower=70;
 		}
-			
-		
 		previusAngle=0;
 	}
 	
@@ -106,30 +130,36 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 	motorSpeed.data.push_back(estimatedMotorOnePower);
 	motorSpeed.data.push_back(estimatedMotorZeroPower);
 	      
-	pub.publish(motorSpeed); 
+	pub.publish(motorSpeed);
+	
+	struct timeval tp;
+	gettimeofday(&tp, NULL);
+	long int currentTime = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+	printf("%i \n", currentTime-startTime);
 } 
 /* 
  *  *
  *   
  * */ 
-int main(int argc, char **argv) {   
-	ros::init(argc, argv, "process_markers");   
+int main(int argc, char **argv) {
+	ros::init(argc, argv, "process_markers");  
 	ros::NodeHandle n;   
 	ros::Rate loop_rate(10);   
+	
+	if(argv[1]!=NULL)
+		distanceTarget=strtof((argv[1]),0);
 	
 	// SUBSCRIBER   
 	ros::Subscriber sub = n.subscribe("markers_stream", 10, markerCallback);   
 	
 	// PUBLISHER   
-	pub = n.advertise<std_msgs::Int16MultiArray>("cmd", 50);   
+	pub = n.advertise<std_msgs::Int16MultiArray>("cmd", 50);  
 	while (ros::ok()){     
 		ros::spinOnce();     
 		loop_rate.sleep();   
 	}   
 	return 0; 
 }
-
-
 
 
 
