@@ -34,31 +34,30 @@ float estimatedMotorOnePower = 0;
 float distanceTarget=0.3; //target distance in cm
 const float ANGLETARGET=0; //target angle in cm. NOTE: since the target is 0.0, angle itself is the angle error signal 
 const float DISTANCEPIDPROPORTIONALCONSTANT=1000;
-const float ANGLEPIDPROPORTIONALCONSTANTLITTLEANGLES=20;
-const float ANGLEPIDPROPORTIONALCONSTANTGREATANGLES=40;
+float anglePIDProportionalConstant;
 const float ANGLEPIDDERIVATIVECONSTANT=30;
 const float ANGLEPIDINTEGRALCONSTANT=10;
 const float FILTERCONSTANT = 0.5;
 
 void markerCallback(aruco_detection::ArMarkers msg) {
-	if(startTime==0){
+	/*if(startTime==0){
 		struct timeval tp;
 		gettimeofday(&tp, NULL);
 		startTime = tp.tv_sec * 1000 + tp.tv_usec / 1000;
-	}
+	}*/
 	
 	markerNo=msg.markerNo;   
 	r=msg.rVecs;   
 	t=msg.tVecs;   
 	ids=msg.markersIds;   
 	  
-	std_msgs::Int16MultiArray motorSpeed;
-	   
+	std_msgs::Int16MultiArray motorSpeed;   
+	
 	if(markerNo > 0) {
 		d = t.at(2); // z coord
 		angle = atan((t.at(0))/t.at(2)); //fix upper left corner ref
 		
-		printf("%f",angle);
+		//printf("%f",angle);
 		
 				
 		/*//utile per fare i grafici di come reagisce, dopo togliere
@@ -89,16 +88,14 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 
 
 		//SECOND PID FEEDBACK, ANGLE CONTROL
+		
+		anglePIDProportionalConstant=400*abs(angle);
+		printf("%f \n",anglePIDProportionalConstant);
 
 		//PROPORTIONAL
-		if((angle-ANGLETARGET)>0.15||(angle-ANGLETARGET)<-0.15){
-			motorOnePower+=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTGREATANGLES;
-			motorZeroPower-=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTGREATANGLES;
-		}		
-		else{
-			motorOnePower+=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTLITTLEANGLES;
-			motorZeroPower-=(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANTLITTLEANGLES;
-		}
+		
+		motorOnePower+=(angle-ANGLETARGET)*anglePIDProportionalConstant;
+		motorZeroPower-=(angle-ANGLETARGET)*anglePIDProportionalConstant;
 		
 		//DERIVATIVE
 		motorOnePower+=(angle-previusAngle)*ANGLEPIDDERIVATIVECONSTANT;
@@ -132,10 +129,10 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 	      
 	pub.publish(motorSpeed);
 	
-	struct timeval tp;
+	/*struct timeval tp;
 	gettimeofday(&tp, NULL);
 	long int currentTime = tp.tv_sec * 1000 + tp.tv_usec / 1000;
-	printf("%i \n", currentTime-startTime);
+	printf("%i \n", currentTime-startTime);*/
 } 
 /* 
  *  *
