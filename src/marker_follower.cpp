@@ -39,23 +39,35 @@ const float ANGLEPIDDERIVATIVECONSTANT=30;
 const float ANGLEPIDINTEGRALCONSTANT=10;
 const float FILTERCONSTANT = 0.5;
 
+int idToFollow=-1;
+
 void markerCallback(aruco_detection::ArMarkers msg) {
 	/*if(startTime==0){
 		struct timeval tp;
 		gettimeofday(&tp, NULL);
 		startTime = tp.tv_sec * 1000 + tp.tv_usec / 1000;
 	}*/
-	
 	markerNo=msg.markerNo;   
 	r=msg.rVecs;   
 	t=msg.tVecs;   
-	ids=msg.markersIds;   
-	  
-	std_msgs::Int16MultiArray motorSpeed;   
+	ids=msg.markersIds;     
+	std_msgs::Int16MultiArray motorSpeed;
+	int indexToFollow=-1;
 	
-	if(markerNo > 0) {
-		d = t.at(2); // z coord
-		angle = atan((t.at(0))/t.at(2)); //fix upper left corner ref
+	//set the marker to follow among them that can be seen. must be done in this certain conditions (over the camera view there must be just a marker)
+	if(idToFollow==-1 && markerNo==1)
+		idToFollow=ids[0];
+	
+	//find the index to get values
+	if(idToFollow!=-1)
+		for(int i=0;i<markerNo;i++)
+			if(ids[i]==idToFollow)
+				indexToFollow=i;
+	
+	
+	if(indexToFollow!=-1 && idToFollow!=-1){
+		d = t.at(3*indexToFollow+2); // z coord
+		angle = atan((t.at(3*indexToFollow))/t.at(3*indexToFollow+2)); //fix upper left corner ref
 		
 		//printf("%f",angle);
 		
@@ -157,18 +169,3 @@ int main(int argc, char **argv) {
 	}   
 	return 0; 
 }
-
-
-
-/*
-		if((angle-ANGLETARGET)>=0){
-			motorOnePower=motorOnePower-(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANT;
-			motorZeroPower=motorZeroPower+(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANT;
-			ROS_INFO("angolo maggiore di 0");
-		}
-		else{
-			ROS_INFO("angolo minore di 0");
-			motorZeroPower=motorZeroPower-(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANT;
-			motorOnePower=motorOnePower+(angle-ANGLETARGET)*ANGLEPIDPROPORTIONALCONSTANT;
-		}
-*/
