@@ -6,3 +6,8 @@ the 2 wheels with the information that it gets from ros_marker_detection. motor_
 then just clone this node in your workspace and run it through rosrun typing:
 
 rosrun aruco_detection aruco_detection distanceInCmToKeepFromMarker
+
+node: you can run all nodes needed for the following typing: 
+
+roslaunch aruco_detection following.launch
+
