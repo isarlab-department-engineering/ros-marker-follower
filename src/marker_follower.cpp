@@ -101,7 +101,7 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 
 		//SECOND PID FEEDBACK, ANGLE CONTROL
 		
-		anglePIDProportionalConstant=400*abs(angle);
+		anglePIDProportionalConstant=500*abs(angle);
 		printf("%f \n",anglePIDProportionalConstant);
 
 		//PROPORTIONAL
@@ -123,11 +123,11 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 	}
 	else{  
 		if(previusAngle>0){
-			motorOnePower=70;
+			motorOnePower=95;
 			motorZeroPower=0;
 		}else if(previusAngle<0){
 			motorOnePower=0;
-			motorZeroPower=70;
+			motorZeroPower=95;
 		}
 		previusAngle=0;
 	}
