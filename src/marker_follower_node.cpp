@@ -7,9 +7,11 @@
 #include <math.h>
 #include <time.h>
 #include <string>
-
+#include "geometry_msgs/Twist.h"
 
 using namespace std; 
+using namespace geometry_msgs;
+
 
 //ROS elems
 ros::Publisher pub;
@@ -51,7 +53,9 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 	r=msg.rVecs;   
 	t=msg.tVecs;   
 	ids=msg.markersIds;     
-	std_msgs::Int16MultiArray motorSpeed;
+	//std_msgs::Int16MultiArray motorSpeed;		old code
+	geometry_msgs::Twist motorSpeed;
+
 	int indexToFollow=-1;
 	
 	//set the marker to follow among them that can be seen. must be done in this certain conditions (over the camera view there must be just a marker)
@@ -136,9 +140,14 @@ void markerCallback(aruco_detection::ArMarkers msg) {
 	estimatedMotorOnePower = estimatedMotorOnePower*FILTERCONSTANT + motorOnePower*(1-FILTERCONSTANT);
 	estimatedMotorZeroPower = estimatedMotorZeroPower*FILTERCONSTANT + motorZeroPower*(1-FILTERCONSTANT);
 	
+
+	motorSpeed.linear.x = estimatedMotorZeroPower;
+	motorSpeed.linear.y = estimatedMotorOnePower;
+	/*	old code
 	motorSpeed.data.push_back(estimatedMotorOnePower);
 	motorSpeed.data.push_back(estimatedMotorZeroPower);
-	      
+	*/
+
 	pub.publish(motorSpeed);
 	
 	/*struct timeval tp;
@@ -162,7 +171,8 @@ int main(int argc, char **argv) {
 	ros::Subscriber sub = n.subscribe("markers_stream", 10, markerCallback);   
 	
 	// PUBLISHER   
-	pub = n.advertise<std_msgs::Int16MultiArray>("cmd", 50);  
+	pub = n.advertise<geometry_msgs::Twist>("follow_topic",50);
+	//pub = n.advertise<std_msgs::Int16MultiArray>("cmd", 50);  
 	while (ros::ok()){     
 		ros::spinOnce();     
 		loop_rate.sleep();   
